@@ -1,26 +1,40 @@
 #ifndef DLINKED_LIST_H
 #define DLINKED_LIST_H
 
-#include <errno.h>
 #include <stddef.h>
-#include <stdlib.h>
 
-#define LIST_ALLOCATE(N) malloc(N)
-#define LIST_FREE(P) free(P)
-#define LIST_ALLOC_FAILED exit(ENOMEM)
+#ifndef LIST_ALLOCATE
+#    include <stdlib.h>
+#    define LIST_ALLOCATE(N) malloc(N)
+#    define LIST_FREE(P) free(P)
+#endif /* LIST_ALLOCATE */
 
-struct ListNode
+#ifndef LIST_ALLOC_FAILED
+#    include <errno.h>
+#    define LIST_ALLOC_FAILED exit(ENOMEM)
+#endif /* LIST_ALLOC_FAILED */
+
+#ifdef LIST_ADDITIONAL_INCLUDE
+#include LIST_ADDITIONAL_INCLUDE
+#endif /* LIST_ADDITIONAL_INCLUDE */
+
+#ifdef __cplusplus
+extern "C"
 {
-    struct ListNode *prev;
-    struct ListNode *next;
-    char obj;
-};
+#endif
 
-struct List
-{
-    struct ListNode *head;
-    struct ListNode *tail;
-};
+    struct ListNode
+    {
+        struct ListNode *prev;
+        struct ListNode *next;
+        char obj;
+    };
+
+    struct List
+    {
+        struct ListNode *head;
+        struct ListNode *tail;
+    };
 
 #define list_push_back(list, T, value)                                                             \
     do {                                                                                           \
@@ -84,25 +98,8 @@ struct List
                                                                                                    \
         T *value_memory = (T *)(&new_node->obj);                                                   \
         *value_memory = (value);                                                                   \
-        new_node->next = new_node->prev = NULL;                                                    \
                                                                                                    \
-        if (node_ptr == NULL) {                                                                    \
-            if (list_ptr->tail == NULL) {                                                          \
-                list_ptr->head = list_ptr->tail = new_node;                                        \
-            } else {                                                                               \
-                list_ptr->tail->next = new_node;                                                   \
-                new_node->prev = list_ptr->tail;                                                   \
-                list_ptr->tail = new_node;                                                         \
-            }                                                                                      \
-        } else if (list_ptr->head == node_ptr) {                                                   \
-            new_node->next = node_ptr;                                                             \
-            node_ptr->prev = new_node;                                                             \
-            list_ptr->head = new_node;                                                             \
-        } else {                                                                                   \
-            new_node->next = node_ptr;                                                             \
-            node_ptr->prev->next = new_node;                                                       \
-            node_ptr->prev = new_node;                                                             \
-        }                                                                                          \
+        list_private_finish_insert(list_ptr, node_ptr, new_node);                                  \
     } while (0)
 
 #define list_get_node_value(node, T) (*((T *)&(node)->obj))
@@ -110,16 +107,23 @@ struct List
 #define list_get_node_from_value_ptr(value_ptr)                                                    \
     ((struct ListNode *)((char *)(value_ptr) - offsetof(struct ListNode, obj)))
 
-void list_erase(struct List *list, struct ListNode *node);
+    void list_erase(struct List *list, struct ListNode *node);
 
-inline struct List list_init()
-{
-    return (struct List){
-        .head = 0,
-        .tail = 0,
-    };
+    inline struct List list_init()
+    {
+        return (struct List){
+            .head = 0,
+            .tail = 0,
+        };
+    }
+
+    void list_destroy(struct List *list);
+
+    void list_private_finish_insert(
+        struct List *list_ptr, struct ListNode *node_ptr, struct ListNode *new_node);
+
+#ifdef __cplusplus
 }
-
-void list_destroy(struct List *list);
+#endif /* extern "C" */
 
 #endif /* DLINKED_LIST_H */
