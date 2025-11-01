@@ -5,3 +5,15 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_CXX_STANDARD 23)
 
 add_executable(main main.c dlinked_list.c)
+
+target_compile_options(
+    main
+    PRIVATE
+    -fsanitize=thread
+)
+
+target_link_options(
+    main
+    PRIVATE
+    -fsanitize=thread
+)
