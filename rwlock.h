@@ -8,9 +8,9 @@
 #endif
 
 #if defined(__cplusplus)
-typedef std::atomic_uint_least64_t rwlock_atomic_t;
+typedef std::atomic_uint rwlock_atomic_uint;
 #else
-typedef atomic_uint_least64_t rwlock_atomic_t;
+typedef atomic_uint rwlock_atomic_uint;
 #endif
 
 enum RwLockWritingStatus
@@ -22,7 +22,7 @@ enum RwLockWritingStatus
 
 struct rwlock
 {
-    rwlock_atomic_t status;
+    rwlock_atomic_uint value;
 };
 
 #if defined(__cplusplus)
@@ -32,7 +32,10 @@ extern "C"
 
     inline void rwlock_init(struct rwlock *lock)
     {
-        lock->status = RwLockWritingStatus_NONE;
+#if defined(__cplusplus)
+        using namespace std;
+#endif
+        atomic_store_explicit(&lock->value, RwLockWritingStatus_NONE, memory_order_relaxed);
     }
 
     inline void rwlock_wrlock(struct rwlock *lock)
@@ -40,13 +43,12 @@ extern "C"
 #if defined(__cplusplus)
         using namespace std;
 #endif
-
-        uint64_t expected;
+        unsigned expected;
 
         do {
             expected = RwLockWritingStatus_NONE;
         } while (!atomic_compare_exchange_weak_explicit(
-            &lock->status,
+            &lock->value,
             &expected,
             RwLockWritingStatus_WRITING,
             memory_order_acq_rel,
@@ -59,16 +61,7 @@ extern "C"
         using namespace std;
 #endif
 
-        uint64_t expected = atomic_load_explicit(&lock->status, memory_order_relaxed);
-        const uint64_t mask = ~((uint64_t)RwLockWritingStatus_WRITING);
-
-        while (!atomic_compare_exchange_weak_explicit(
-            &lock->status,
-            &expected,
-            expected & mask,
-            memory_order_acq_rel,
-            memory_order_relaxed)) {
-        }
+        atomic_fetch_sub(&lock->value, RwLockWritingStatus_WRITING);
     }
 
     inline void rwlock_rdlock(struct rwlock *lock)
@@ -77,13 +70,13 @@ extern "C"
         using namespace std;
 #endif
 
-        const uint64_t mask = ~((uint64_t)RwLockWritingStatus_WRITING);
-        uint64_t expected = atomic_load_explicit(&lock->status, memory_order_relaxed);
+        const unsigned mask = ~((unsigned)RwLockWritingStatus_WRITING);
+        unsigned expected = atomic_load_explicit(&lock->value, memory_order_relaxed);
 
         do {
             expected &= mask;
         } while (!atomic_compare_exchange_weak_explicit(
-            &lock->status,
+            &lock->value,
             &expected,
             expected + RwLockWritingStatus_READING,
             memory_order_acq_rel,
@@ -96,10 +89,10 @@ extern "C"
         using namespace std;
 #endif
 
-        uint64_t expected = atomic_load_explicit(&lock->status, memory_order_relaxed);
+        unsigned expected = atomic_load_explicit(&lock->value, memory_order_relaxed);
 
         while (!atomic_compare_exchange_weak_explicit(
-            &lock->status,
+            &lock->value,
             &expected,
             expected - RwLockWritingStatus_READING,
             memory_order_acq_rel,
