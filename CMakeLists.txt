@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
-project(CList LANGUAGES C VERSION 0.0.0)
+project(CList LANGUAGES C CXX VERSION 0.0.0)
+
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_CXX_STANDARD 23)
 
 add_executable(main main.c dlinked_list.c)
