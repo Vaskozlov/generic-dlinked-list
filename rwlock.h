@@ -89,19 +89,11 @@ extern "C"
         using namespace std;
 #endif
 
-        unsigned expected = atomic_load_explicit(&lock->value, memory_order_relaxed);
-
-        while (!atomic_compare_exchange_weak_explicit(
-            &lock->value,
-            &expected,
-            expected - RwLockWritingStatus_READING,
-            memory_order_acq_rel,
-            memory_order_relaxed)) {
-        }
+        atomic_fetch_sub_explicit(&lock->value, RwLockWritingStatus_READING, memory_order_acq_rel);
     }
 
 #if defined(__cplusplus)
-}
+    }
 #endif
 
 #endif /* RWLOCK_H */
